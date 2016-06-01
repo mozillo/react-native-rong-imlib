@@ -42,7 +42,7 @@ RCT_EXPORT_MODULE(RCTRongIMLib);
 {
     self = [super init];
     if (self) {
-        [[RCIMClient sharedRCIMClient] setReceiveMessageDelegate:self object:nil];
+        [[self shareClient] setReceiveMessageDelegate:self object:nil];
         _voiceManager = [RCTRongCloudVoiceManager new];
     }
     return self;
@@ -50,9 +50,8 @@ RCT_EXPORT_MODULE(RCTRongIMLib);
 
 - (void)dealloc
 {
-    RCIMClient* client = [RCIMClient sharedRCIMClient];
-    [client disconnect];
-    [client setReceiveMessageDelegate:nil object:nil];
+    [[self shareClient] disconnect];
+    [[self shareClient] setReceiveMessageDelegate:nil object:nil];
 }
 
 + (void)registerAPI:(NSString *)aString
@@ -76,9 +75,13 @@ RCT_EXPORT_MODULE(RCTRongIMLib);
     [[RCIMClient sharedRCIMClient] setDeviceToken:token];
 }
 
+-(RCIMClient *) shareClient {
+    return [RCIMClient sharedRCIMClient];
+}
+
 RCT_EXPORT_METHOD(connect:(NSString *)token resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 {
-    [[RCIMClient sharedRCIMClient] connectWithToken:token success:^(NSString *userId) {
+    [[self shareClient] connectWithToken:token success:^(NSString *userId) {
         // Connect 成功
         resolve(userId);
     } error:^(RCConnectErrorCode status) {
@@ -94,20 +97,20 @@ RCT_EXPORT_METHOD(connect:(NSString *)token resolve:(RCTPromiseResolveBlock)reso
 // 断开与融云服务器的连接，并不再接收远程推送
 RCT_EXPORT_METHOD(logout:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 {
-    [[RCIMClient sharedRCIMClient] logout];
+    [[self shareClient] logout];
     resolve(nil);
 }
 
 // 断开与融云服务器的连接，但仍然接收远程推送
 RCT_EXPORT_METHOD(disconnect:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 {
-    [[RCIMClient sharedRCIMClient] disconnect];
+    [[self shareClient] disconnect];
     resolve(nil);
 }
 
 RCT_EXPORT_METHOD(getConversationList:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 {
-    NSArray *array = [[RCIMClient sharedRCIMClient] getConversationList:@[@(ConversationType_PRIVATE),
+    NSArray *array = [[self shareClient] getConversationList:@[@(ConversationType_PRIVATE),
                                                                           @(ConversationType_DISCUSSION),
                                                                           @(ConversationType_GROUP),
                                                                           @(ConversationType_CHATROOM),
@@ -124,10 +127,20 @@ RCT_EXPORT_METHOD(getConversationList:(RCTPromiseResolveBlock)resolve reject:(RC
     resolve(newArray);
 }
 
+RCT_EXPORT_METHOD(clearConversations: (NSArray *)conversationTypeList)
+{
+    [[self shareClient] clearConversations:conversationTypeList];
+}
+
+RCT_EXPORT_METHOD(removeConversation: (RCConversationType)conversationType  targetId:(NSString *)targetId)
+{
+    [[self shareClient] removeConversation:conversationType targetId:targetId];
+}
+
 RCT_EXPORT_METHOD(getLatestMessages: (RCConversationType) type targetId:(NSString*) targetId count:(int) count
                   resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 {
-    NSArray* array = [[RCIMClient sharedRCIMClient] getLatestMessages:type targetId:targetId count:count];
+    NSArray* array = [[self shareClient] getLatestMessages:type targetId:targetId count:count];
     
     NSMutableArray* newArray = [NSMutableArray new];
     for (RCMessage* msg in array) {
@@ -141,8 +154,7 @@ RCT_EXPORT_METHOD(sendMessage: (RCConversationType) type targetId:(NSString*) ta
                   pushContent: (NSString*) pushContent pushData:(NSString*) pushData
                   resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 {
-    RCIMClient* client = [RCIMClient sharedRCIMClient];
-    RCMessage* msg = [client sendMessage:type targetId:targetId content:content pushContent:pushContent
+    RCMessage* msg = [[self shareClient] sendMessage:type targetId:targetId content:content pushContent:pushContent
                 success:^(long messageId){
                     [_bridge.eventDispatcher sendAppEventWithName:@"msgSendOk" body:@(messageId)];
                 } error:^(RCErrorCode code, long messageId){
@@ -152,6 +164,11 @@ RCT_EXPORT_METHOD(sendMessage: (RCConversationType) type targetId:(NSString*) ta
                     [_bridge.eventDispatcher sendAppEventWithName:@"msgSendFailed" body:dic];
                 }];
     resolve([self.class _convertMessage:msg]);
+}
+
+RCT_EXPORT_METHOD(deleteMessages:(NSArray *)messageIds)
+{
+    [[self shareClient] deleteMessages:messageIds];
 }
 
 RCT_EXPORT_METHOD(canRecordVoice:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
