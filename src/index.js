@@ -2,7 +2,7 @@
  * Created by tdzl2003 on 4/13/16.
  */
 
-import {NativeModules, DeviceEventEmitter} from 'react-native';
+import {Alert, NativeModules, NativeAppEventEmitter} from 'react-native';
 import EventEmitter from 'react-native/Libraries/vendor/emitter/EventEmitter';
 
 const RongIMLib = NativeModules.RongIMLib;
@@ -16,9 +16,6 @@ exports.once = eventEmitter.once.bind(eventEmitter);
 exports.removeAllListeners = eventEmitter.removeAllListeners.bind(eventEmitter);
 exports.removeCurrentListener = eventEmitter.removeCurrentListener.bind(eventEmitter);
 
-DeviceEventEmitter.addListener('rongIMMsgRecved', msg => {
-  if (__DEV__){
-    console.log(msg);
-  }
+NativeAppEventEmitter.addListener('rongIMMsgRecved', msg => {
   eventEmitter.emit('msgRecved', msg);
 });
