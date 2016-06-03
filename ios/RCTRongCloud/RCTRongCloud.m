@@ -45,6 +45,9 @@ RCT_EXPORT_MODULE(RCTRongIMLib);
         [[self shareClient] setReceiveMessageDelegate:self object:nil];
         _voiceManager = [RCTRongCloudVoiceManager new];
     }
+    
+    [[NSNotificationCenter defaultCenter] addObserver:RCLibDispatchReadReceiptNotification selector:@selector(dispatchReadReceiptNotification:) name:@"dispatchReadReceiptNotification" object:nil];
+    
     return self;
 }
 
@@ -75,6 +78,11 @@ RCT_EXPORT_MODULE(RCTRongIMLib);
     [[RCIMClient sharedRCIMClient] setDeviceToken:token];
 }
 
++ (void)dispatchReadReceiptNotification:(NSNotification *) notification
+{
+//    NSLog(@"%@", notification);
+}
+
 -(RCIMClient *) shareClient {
     return [RCIMClient sharedRCIMClient];
 }
@@ -94,6 +102,13 @@ RCT_EXPORT_METHOD(connect:(NSString *)token resolve:(RCTPromiseResolveBlock)reso
                                      }];
 }
 
+RCT_EXPORT_METHOD(getConnectionStatus:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+{
+    RCConnectionStatus status = [[self shareClient] getConnectionStatus];
+    NSLog(@"status: %@", status);
+    resolve(nil);
+}
+
 // 断开与融云服务器的连接，并不再接收远程推送
 RCT_EXPORT_METHOD(logout:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 {
@@ -106,6 +121,12 @@ RCT_EXPORT_METHOD(disconnect:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseR
 {
     [[self shareClient] disconnect];
     resolve(nil);
+}
+
+RCT_EXPORT_METHOD(getTotalUnreadCount:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+{
+    int totalUnreadCount = [[self shareClient] getTotalUnreadCount];
+    resolve([NSString stringWithFormat:@"%d", totalUnreadCount]);
 }
 
 RCT_EXPORT_METHOD(getConversationList:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
@@ -127,6 +148,18 @@ RCT_EXPORT_METHOD(getConversationList:(RCTPromiseResolveBlock)resolve reject:(RC
     resolve(newArray);
 }
 
+RCT_EXPORT_METHOD(getConversation:(RCConversationType)conversationType targetId:(NSString *)targetId resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+{
+    RCConversation *conv = [[self shareClient] getConversation:conversationType targetId:targetId];
+    resolve([self.class _convertConversation:conv]);
+}
+
+RCT_EXPORT_METHOD(sendReadReceiptMessage:(RCConversationType)conversationType targetId:(NSString *)targetId time:(nonnull NSNumber *)time)
+{
+    //NSLog(@"Long long timestamp %ld", time);
+    [[self shareClient] sendReadReceiptMessage:conversationType targetId:targetId time:(long long)time];
+}
+
 RCT_EXPORT_METHOD(clearConversations: (NSArray *)conversationTypeList)
 {
     [[self shareClient] clearConversations:conversationTypeList];
@@ -135,6 +168,11 @@ RCT_EXPORT_METHOD(clearConversations: (NSArray *)conversationTypeList)
 RCT_EXPORT_METHOD(removeConversation: (RCConversationType)conversationType  targetId:(NSString *)targetId)
 {
     [[self shareClient] removeConversation:conversationType targetId:targetId];
+}
+
+RCT_EXPORT_METHOD(setMessageReceivedStatus:(long)messageId receivedStatus:(RCReceivedStatus)receivedStatus)
+{
+    [[self shareClient] setMessageReceivedStatus:messageId receivedStatus:receivedStatus];
 }
 
 RCT_EXPORT_METHOD(getLatestMessages: (RCConversationType) type targetId:(NSString*) targetId count:(int) count
@@ -169,6 +207,11 @@ RCT_EXPORT_METHOD(sendMessage: (RCConversationType) type targetId:(NSString*) ta
 RCT_EXPORT_METHOD(deleteMessages:(NSArray *)messageIds)
 {
     [[self shareClient] deleteMessages:messageIds];
+}
+
+RCT_EXPORT_METHOD(clearMessagesUnreadStatus:(RCConversationType)conversationType targetId:(NSString *)targetId)
+{
+    [[self shareClient] clearMessagesUnreadStatus:conversationType targetId:targetId];
 }
 
 RCT_EXPORT_METHOD(canRecordVoice:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
@@ -227,6 +270,7 @@ RCT_EXPORT_METHOD(stopPlayVoice)
               left:(int)nLeft
             object:(id)object
 {
+    NSLog(@"onReceived : %@", [self.class _convertMessage:message]);
     [_bridge.eventDispatcher sendAppEventWithName:@"rongIMMsgRecved" body:[self.class _convertMessage:message]];
 }
 
