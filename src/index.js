@@ -5,6 +5,17 @@
 import {Alert, NativeModules, NativeAppEventEmitter} from 'react-native';
 import EventEmitter from 'react-native/Libraries/vendor/emitter/EventEmitter';
 
+const ConversationType = {
+	APP_SERVICE: 'appService',
+	CHATROOM: 'chatroom',
+	CUSTOM_SERVICE: 'customerService',
+	DISCUSSION: 'discussion',
+	GROUP: 'group',
+  PRIVATE: 'private',
+  PUBLISH_SERVICE: 'publishService',
+  PUSH_SERVICE: 'pushService',
+  SYSTEM: 'system', 
+};
 const RongIMLib = NativeModules.RongIMLib;
 
 const eventEmitter = new EventEmitter();
