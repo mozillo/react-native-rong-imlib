@@ -8,10 +8,9 @@ import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 
 import org.w3c.dom.Text;
-
 import java.util.List;
-
 import io.rong.imlib.RongIMClient;
+
 import io.rong.imlib.model.Conversation;
 import io.rong.imlib.model.Message;
 import io.rong.imlib.model.MessageContent;
@@ -22,6 +21,7 @@ import io.rong.message.VoiceMessage;
 
 /**
  * Created by tdzl2003 on 4/13/16.
+ * Updated by mot
  */
 public class Utils {
 
@@ -97,6 +97,17 @@ public class Utils {
         ret.putString("targetId", conv.getTargetId());
         ret.putInt("unreadCount", conv.getUnreadMessageCount());
         ret.putMap("lastMessage", convertMessageContent(conv.getLatestMessage()));
+
+        ret.putBoolean("isTop", conv.isTop());
+        ret.putInt("receivedStatus", conv.getReceivedStatus().getFlag());
+        ret.putInt("sentStatus", conv.getSentStatus().getValue());
+        ret.putDouble("receivedTime", conv.getReceivedTime());
+        ret.putDouble("sentTime", conv.getSentTime());
+        ret.putString("draft", conv.getDraft());
+        ret.putString("objectName", conv.getObjectName());
+
+        ret.putString("senderUserId", conv.getSenderUserId());
+        ret.putInt("lastestMessageId", conv.getLatestMessageId());
         return ret;
     }
 
