@@ -16,6 +16,7 @@ import io.rong.imlib.model.Message;
 import io.rong.imlib.model.MessageContent;
 import io.rong.message.CommandNotificationMessage;
 import io.rong.message.ImageMessage;
+import io.rong.message.RichContentMessage;
 import io.rong.message.TextMessage;
 import io.rong.message.VoiceMessage;
 
@@ -59,10 +60,17 @@ public class Utils {
             ret.putString("thumb", imageContent.getThumUri().toString());
             ret.putString("extra", imageContent.getExtra());
         } else if (content instanceof CommandNotificationMessage) {
-            CommandNotificationMessage notifyContent = (CommandNotificationMessage)content;
+            CommandNotificationMessage notifyContent = (CommandNotificationMessage) content;
             ret.putString("type", "notify");
             ret.putString("name", notifyContent.getName());
             ret.putString("data", notifyContent.getData());
+        } else if (content instanceof RichContentMessage) {
+            RichContentMessage richContent = (RichContentMessage) content;
+            ret.putString("type", "rich");
+            ret.putString("title", richContent.getTitle());
+            ret.putString("image", richContent.getImgUrl());
+            ret.putString("url", richContent.getUrl());
+            ret.putString("extra", richContent.getExtra());
         } else {
             ret.putString("type", "unknown");
         }
