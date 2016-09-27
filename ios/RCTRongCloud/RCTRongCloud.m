@@ -354,7 +354,6 @@ RCT_EXPORT_METHOD(stopPlayVoice)
         RCRichContentMessage * message = (RCRichContentMessage*)messageContent;
         dic[@"type"] = @"rich";
         dic[@"title"] = message.title;
-        dic[@"digest"] = message.digest;
         dic[@"image"] = message.imageURL;
         dic[@"url"] = message.url;
         dic[@"extra"] = message.extra;
