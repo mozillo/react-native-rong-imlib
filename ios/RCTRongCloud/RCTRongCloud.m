@@ -45,7 +45,6 @@ RCT_EXPORT_MODULE(RCTRongIMLib);
         [[self shareClient] setReceiveMessageDelegate:self object:nil];
         _voiceManager = [RCTRongCloudVoiceManager new];
     }
-    
     [[NSNotificationCenter defaultCenter] addObserver:RCLibDispatchReadReceiptNotification selector:@selector(dispatchReadReceiptNotification:) name:@"dispatchReadReceiptNotification" object:nil];
     
     return self;
@@ -129,17 +128,24 @@ RCT_EXPORT_METHOD(getTotalUnreadCount:(RCTPromiseResolveBlock)resolve reject:(RC
     resolve([NSString stringWithFormat:@"%d", totalUnreadCount]);
 }
 
-RCT_EXPORT_METHOD(getConversationList:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXPORT_METHOD(getConversationList:(NSArray *)conversationTypeList resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 {
-    NSArray *array = [[self shareClient] getConversationList:@[@(ConversationType_PRIVATE),
-                                                                          @(ConversationType_DISCUSSION),
-                                                                          @(ConversationType_GROUP),
-                                                                          @(ConversationType_CHATROOM),
-                                                                          @(ConversationType_CUSTOMERSERVICE),
-                                                                          @(ConversationType_SYSTEM),
-                                                                          @(ConversationType_APPSERVICE),
-                                                                          @(ConversationType_PUBLICSERVICE),
-                                                                          @(ConversationType_PUSHSERVICE)]];
+    NSArray *array = [NSArray alloc];
+    if ([conversationTypeList count] > 0) {
+        NSArray * typeList = [self.class _convertConversationTypeArray: conversationTypeList];
+        array = [[self shareClient] getConversationList:typeList];
+    } else {
+        array = [[self shareClient] getConversationList:@[@(ConversationType_PRIVATE),
+                                                           @(ConversationType_DISCUSSION),
+                                                           @(ConversationType_GROUP),
+                                                           @(ConversationType_CHATROOM),
+                                                           @(ConversationType_CUSTOMERSERVICE),
+                                                           @(ConversationType_SYSTEM),
+                                                           @(ConversationType_APPSERVICE),
+                                                           @(ConversationType_PUBLICSERVICE),
+                                                           @(ConversationType_PUSHSERVICE)]];
+    }
+    
     NSMutableArray *newArray = [NSMutableArray new];
     for (RCConversation *conv in array) {
         NSDictionary *convDic = [self.class _convertConversation:conv];
@@ -354,6 +360,7 @@ RCT_EXPORT_METHOD(stopPlayVoice)
         RCRichContentMessage * message = (RCRichContentMessage*)messageContent;
         dic[@"type"] = @"rich";
         dic[@"title"] = message.title;
+        dic[@"digest"] = message.digest;
         dic[@"image"] = message.imageURL;
         dic[@"url"] = message.url;
         dic[@"extra"] = message.extra;
@@ -367,26 +374,63 @@ RCT_EXPORT_METHOD(stopPlayVoice)
 + (NSString *)_converConversationType:(RCConversationType *)type {
     if (type == 0) {
         return @"none";
-    } else if (type == 1) {
+    } else if (type == ConversationType_PRIVATE) {
         return @"private";
-    } else if (type == 2) {
+    } else if (type == ConversationType_DISCUSSION) {
         return @"discussion";
-    } else if (type == 3) {
+    } else if (type == ConversationType_GROUP) {
         return @"group";
-    } else if (type == 4) {
+    } else if (type == ConversationType_CHATROOM) {
         return @"chatroom";
-    } else if (type == 5) {
+    } else if (type == ConversationType_CUSTOMERSERVICE) {
         return @"customer_service";
-    } else if (type == 6) {
+    } else if (type == ConversationType_SYSTEM) {
         return @"system";
-    } else if (type == 7) {
-        return @"app_public_service";
-    } else if (type == 8) {
+    } else if (type == ConversationType_APPSERVICE) {
+        return @"app_service";
+    } else if (type == ConversationType_PUBLICSERVICE) {
         return @"public_service";
-    } else if (type == 9) {
+    } else if (type == ConversationType_PUSHSERVICE) {
         return @"push_service";
     }
     return @"";
 }
+
++ (RCConversationType *)_converConversationTypeString:(NSString *)type {
+    if ([type isEqualToString: @"private"]) {
+        return ConversationType_PRIVATE;
+    } else if ([type isEqualToString:@"discussion"]) {
+        return ConversationType_DISCUSSION;
+    } else if ([type isEqualToString:@"group"]) {
+        return ConversationType_GROUP;
+    } else if ([type isEqualToString: @"chatroom"]) {
+        return ConversationType_CHATROOM;
+    } else if ([type isEqualToString: @"customer_service"]) {
+        return ConversationType_CUSTOMERSERVICE;
+    } else if ([type isEqualToString: @"system"]) {
+        return ConversationType_SYSTEM;
+    } else if ([type isEqualToString: @"app_service"]) {
+        return ConversationType_APPSERVICE;
+    } else if ([type isEqualToString: @"public_service"]) {
+        return ConversationType_PUBLICSERVICE;
+    } else if ([type isEqualToString: @"push_service"]) {
+        return ConversationType_PUSHSERVICE;
+    } else {
+        return ConversationType_PRIVATE;
+    }
+}
+
++ (NSArray *) _convertConversationTypeArray: (NSArray *)array {
+    NSMutableArray * ret = [[NSMutableArray alloc] init];
+    
+    for(NSString *typeName in array) {
+        NSLog(@"typeName: %@", typeName);
+        RCConversationType type = [self.class _converConversationTypeString:typeName];
+        [ret addObject:@(type)];
+    }
+    NSLog(@"ret: %@", ret);
+    return (NSArray *)ret;
+}
+
 
 @end
