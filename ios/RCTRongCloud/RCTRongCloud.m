@@ -182,6 +182,7 @@ RCT_EXPORT_METHOD(getLatestMessages: (RCConversationType) type targetId:(NSStrin
     
     NSMutableArray* newArray = [NSMutableArray new];
     for (RCMessage* msg in array) {
+        NSLog(@"%@", msg);
         NSDictionary* convDic = [self.class _convertMessage:msg];
         [newArray addObject:convDic];
     }
@@ -280,7 +281,7 @@ RCT_EXPORT_METHOD(stopPlayVoice)
 {
     NSMutableDictionary *dic = [NSMutableDictionary new];
     dic[@"title"] = conversation.conversationTitle;
-    dic[@"type"] = @(conversation.conversationType);
+    dic[@"type"] = [self _converConversationType:conversation.conversationType];
     dic[@"targetId"] = conversation.targetId;
     dic[@"unreadCount"] = @(conversation.unreadMessageCount);
     dic[@"lastMessage"] = [self _converMessageContent:conversation.lastestMessage];
@@ -293,7 +294,7 @@ RCT_EXPORT_METHOD(stopPlayVoice)
     dic[@"draft"] = conversation.draft;
     dic[@"objectName"] = conversation.objectName;
     dic[@"senderUserId"] = conversation.senderUserId;
-    dic[@"jsonDict"] = conversation.jsonDict;
+    //dic[@"jsonDict"] = conversation.jsonDict;
     dic[@"lastestMessageId"] = @(conversation.lastestMessageId);
     return dic;
 }
@@ -349,10 +350,44 @@ RCT_EXPORT_METHOD(stopPlayVoice)
         dic[@"name"] = message.name;
         dic[@"data"] = message.data;
     }
+    else if ([messageContent isKindOfClass:[RCRichContentMessage class]]) {
+        RCRichContentMessage * message = (RCRichContentMessage*)messageContent;
+        dic[@"type"] = @"rich";
+        dic[@"title"] = message.title;
+        dic[@"digest"] = message.digest;
+        dic[@"image"] = message.imageURL;
+        dic[@"url"] = message.url;
+        dic[@"extra"] = message.extra;
+    }
     else {
         dic[@"type"] = @"unknown";
     }
     return dic;
+}
+
++ (NSString *)_converConversationType:(RCConversationType *)type {
+    if (type == 0) {
+        return @"none";
+    } else if (type == 1) {
+        return @"private";
+    } else if (type == 2) {
+        return @"discussion";
+    } else if (type == 3) {
+        return @"group";
+    } else if (type == 4) {
+        return @"chatroom";
+    } else if (type == 5) {
+        return @"customer_service";
+    } else if (type == 6) {
+        return @"system";
+    } else if (type == 7) {
+        return @"app_public_service";
+    } else if (type == 8) {
+        return @"public_service";
+    } else if (type == 9) {
+        return @"push_service";
+    }
+    return @"";
 }
 
 @end
