@@ -3,15 +3,20 @@ package io.rong.imlib.ipc;
 import android.net.Uri;
 
 import com.facebook.react.bridge.Arguments;
+import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 
 import org.w3c.dom.Text;
+
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import io.rong.imlib.RongIMClient;
 
 import io.rong.imlib.model.Conversation;
+import io.rong.imlib.model.Conversation.ConversationType;
 import io.rong.imlib.model.Message;
 import io.rong.imlib.model.MessageContent;
 import io.rong.message.CommandNotificationMessage;
@@ -146,5 +151,48 @@ public class Utils {
             return ret;
         }
         return TextMessage.obtain("[未知消息]");
+    }
+
+    public static ArrayList<ConversationType> conversationTypeToEnumArray(ReadableArray conversationTypes) {
+        ArrayList<ConversationType> collection = new ArrayList<>();
+        for(int key = 0 ; key < conversationTypes.size(); key++) {
+            String type = conversationTypes.getString(key);
+            ConversationType t;
+            switch(type) {
+                case "private" :
+                    t = ConversationType.PRIVATE;
+                    break;
+                case "discussion" :
+                    t = ConversationType.DISCUSSION;
+                    break;
+                case "group" :
+                    t = ConversationType.GROUP;
+                    break;
+                case "chatroom" :
+                    t = ConversationType.CHATROOM;
+                    break;
+                case "customer_service" :
+                    t = ConversationType.CUSTOMER_SERVICE;
+                    break;
+                case "system" :
+                    t = ConversationType.SYSTEM;
+                    break;
+                case "app_public_service" :
+                    t = ConversationType.APP_PUBLIC_SERVICE;
+                    break;
+                case "public_service" :
+                    t = ConversationType.PUBLIC_SERVICE;
+                    break;
+                case "push_service" :
+                    t = ConversationType.PUSH_SERVICE;
+                    break;
+                default:
+                    t = ConversationType.PRIVATE;
+                    break;
+            }
+            collection.add(t);
+        }
+
+        return collection;
     }
 }
