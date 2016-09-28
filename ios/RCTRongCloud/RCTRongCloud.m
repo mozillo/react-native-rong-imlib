@@ -122,12 +122,19 @@ RCT_EXPORT_METHOD(disconnect:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseR
     resolve(nil);
 }
 
+//未读消息总数
 RCT_EXPORT_METHOD(getTotalUnreadCount:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 {
     int totalUnreadCount = [[self shareClient] getTotalUnreadCount];
     resolve([NSString stringWithFormat:@"%d", totalUnreadCount]);
 }
 
+//设置会话是否置顶
+RCT_EXPORT_METHOD(setConversationToTop:(NSString *)conversationType targetId:(NSString *)targetId isTop:(BOOL)isTop) {
+    [[self shareClient] setConversationToTop:[self.class _converConversationTypeString:conversationType] targetId:targetId isTop:isTop];
+}
+
+//获取会话列表
 RCT_EXPORT_METHOD(getConversationList:(NSArray *)conversationTypeList resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 {
     NSArray *array = [NSArray alloc];
@@ -154,33 +161,41 @@ RCT_EXPORT_METHOD(getConversationList:(NSArray *)conversationTypeList resolve:(R
     resolve(newArray);
 }
 
+//获取会话
 RCT_EXPORT_METHOD(getConversation:(RCConversationType)conversationType targetId:(NSString *)targetId resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 {
     RCConversation *conv = [[self shareClient] getConversation:conversationType targetId:targetId];
     resolve([self.class _convertConversation:conv]);
 }
 
+//发送已读回执
 RCT_EXPORT_METHOD(sendReadReceiptMessage:(RCConversationType)conversationType targetId:(NSString *)targetId time:(nonnull NSNumber *)time)
 {
     //NSLog(@"Long long timestamp %ld", time);
     [[self shareClient] sendReadReceiptMessage:conversationType targetId:targetId time:(long long)time];
 }
 
-RCT_EXPORT_METHOD(clearConversations: (NSArray *)conversationTypeList)
+//清除会话列表
+RCT_EXPORT_METHOD(clearConversations: (NSArray *)conversationTypeList resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 {
-    [[self shareClient] clearConversations:conversationTypeList];
+    NSArray * typeList = [self.class _convertConversationTypeArray: conversationTypeList];
+    BOOL result = [[self shareClient] clearConversations:typeList];
+    resolve(@(result));
 }
 
+//清除会话
 RCT_EXPORT_METHOD(removeConversation: (RCConversationType)conversationType  targetId:(NSString *)targetId)
 {
     [[self shareClient] removeConversation:conversationType targetId:targetId];
 }
 
+// 设置消息的接收状态
 RCT_EXPORT_METHOD(setMessageReceivedStatus:(long)messageId receivedStatus:(RCReceivedStatus)receivedStatus)
 {
     [[self shareClient] setMessageReceivedStatus:messageId receivedStatus:receivedStatus];
 }
 
+//获取最新的消息
 RCT_EXPORT_METHOD(getLatestMessages: (RCConversationType) type targetId:(NSString*) targetId count:(int) count
                   resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 {
@@ -194,7 +209,7 @@ RCT_EXPORT_METHOD(getLatestMessages: (RCConversationType) type targetId:(NSStrin
     }
     resolve(newArray);
 }
-
+//发送消息
 RCT_EXPORT_METHOD(sendMessage: (RCConversationType) type targetId:(NSString*) targetId content:(RCMessageContent*) content
                   pushContent: (NSString*) pushContent pushData:(NSString*) pushData
                   resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
@@ -210,17 +225,62 @@ RCT_EXPORT_METHOD(sendMessage: (RCConversationType) type targetId:(NSString*) ta
                 }];
     resolve([self.class _convertMessage:msg]);
 }
-
+//删除消息
 RCT_EXPORT_METHOD(deleteMessages:(NSArray *)messageIds)
 {
     [[self shareClient] deleteMessages:messageIds];
 }
-
-RCT_EXPORT_METHOD(clearMessagesUnreadStatus:(RCConversationType)conversationType targetId:(NSString *)targetId)
+//清除消息未读状态
+RCT_EXPORT_METHOD(clearMessagesUnreadStatus:(NSString *)conversationType targetId:(NSString *)targetId)
 {
-    [[self shareClient] clearMessagesUnreadStatus:conversationType targetId:targetId];
+    [[self shareClient] clearMessagesUnreadStatus:[self.class _converConversationTypeString:conversationType] targetId:targetId];
+}
+//加入聊天室
+RCT_EXPORT_METHOD(joinChatRoom: (NSString *)targetId messageCount:(int)messageCount resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject) {
+    
+    [[self shareClient] joinChatRoom:targetId messageCount:messageCount success:^() {
+      
+      } error:^(RCErrorCode code){
+          
+      }];
 }
 
+//创建讨论组
+RCT_EXPORT_METHOD(createDiscussion:(NSString *)name userIdList:(NSArray *)userIdList resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject) {
+    
+}
+
+//讨论组加人，将用户加入讨论组
+RCT_EXPORT_METHOD(addMemberToDiscussion:(NSString *)discussionId userIdList:(NSArray *)userIdList resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject) {
+    
+}
+
+//讨论组踢人，将用户移出讨论组
+RCT_EXPORT_METHOD(removeMemberFromDiscussion:(NSString *)discussionId userId:(NSString *)userId resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject) {
+    
+}
+
+//退出当前讨论组
+RCT_EXPORT_METHOD(quitDiscussion:(NSString *)discussionId resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject) {
+    
+}
+
+//获取讨论组的信息
+RCT_EXPORT_METHOD(getDiscussion:(NSString *)discussionId resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject) {
+    
+}
+
+//设置讨论组名称
+RCT_EXPORT_METHOD(setDiscussionName:(NSString *)discussionId name:(NSString *)discussionName resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject) {
+    
+}
+
+//设置讨论组是否开放加人权限
+RCT_EXPORT_METHOD(setDiscussionInviteStatus:(NSString *)targetId isOpen:(BOOL)isOpen resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject) {
+    
+}
+
+//是否可以录音
 RCT_EXPORT_METHOD(canRecordVoice:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 {
     [_voiceManager canRecordVoice:^(NSError *error, NSDictionary *result) {
