@@ -13,6 +13,9 @@ import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.ReadableArray;
+import com.facebook.react.bridge.WritableArray;
+import com.facebook.react.bridge.ReadableNativeArray;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 
@@ -20,11 +23,14 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
 import io.rong.imlib.RongIMClient;
 import io.rong.imlib.model.Conversation;
+import io.rong.imlib.model.Conversation.ConversationType;
 import io.rong.imlib.model.Message;
 
 /**
@@ -109,23 +115,35 @@ public class IMLibModule extends ReactContextBaseJavaModule implements RongIMCli
     }
 
     @ReactMethod
-    public void getConversationList(final Promise promise){
+    public void getConversationList(ReadableArray types, final Promise promise) {
         if (client == null) {
             promise.reject("NotLogined", "Must call connect first.");
             return;
         }
+        ConversationType[] conversationTypes = {
+                ConversationType.PRIVATE,
+                ConversationType.DISCUSSION,
+                ConversationType.GROUP,
+                ConversationType.CHATROOM,
+                ConversationType.CUSTOMER_SERVICE,
+                ConversationType.SYSTEM,
+                ConversationType.APP_PUBLIC_SERVICE,
+                ConversationType.PUBLIC_SERVICE,
+                ConversationType.PUSH_SERVICE
+        };
+        if (types.size() > 0) {
+            conversationTypes = Utils.conversationTypeToEnumArray(types).toArray(new ConversationType[0]);
+        }
         client.getConversationList(new RongIMClient.ResultCallback<List<Conversation>>() {
-
             @Override
             public void onSuccess(List<Conversation> conversations) {
                 promise.resolve(Utils.convertConversationList(conversations));
             }
-
             @Override
             public void onError(RongIMClient.ErrorCode errorCode) {
                 promise.reject("" + errorCode.getValue(), errorCode.getMessage());
             }
-        });
+        }, conversationTypes);
     }
 
     @ReactMethod
