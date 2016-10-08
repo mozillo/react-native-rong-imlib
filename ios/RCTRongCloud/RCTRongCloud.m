@@ -46,6 +46,9 @@ RCT_EXPORT_MODULE(RCTRongIMLib);
         _voiceManager = [RCTRongCloudVoiceManager new];
     }
     [[NSNotificationCenter defaultCenter] addObserver:RCLibDispatchReadReceiptNotification selector:@selector(dispatchReadReceiptNotification:) name:@"dispatchReadReceiptNotification" object:nil];
+
+    //监听融云网络状态
+    
     
     return self;
 }
@@ -63,6 +66,7 @@ RCT_EXPORT_MODULE(RCTRongIMLib);
         [[RCIMClient sharedRCIMClient] initWithAppKey:aString];
     });
 }
+
 
 + (void)setDeviceToken:(NSData *)aToken
 {
@@ -89,6 +93,7 @@ RCT_EXPORT_MODULE(RCTRongIMLib);
 RCT_EXPORT_METHOD(connect:(NSString *)token resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 {
     [[self shareClient] connectWithToken:token success:^(NSString *userId) {
+        //[[self shareClient] setRCConnectionStatusChangeDelegate:self];
         // Connect 成功
         resolve(userId);
     } error:^(RCConnectErrorCode status) {
@@ -104,8 +109,7 @@ RCT_EXPORT_METHOD(connect:(NSString *)token resolve:(RCTPromiseResolveBlock)reso
 RCT_EXPORT_METHOD(getConnectionStatus:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 {
     RCConnectionStatus status = [[self shareClient] getConnectionStatus];
-    NSLog(@"status: %@", status);
-    resolve(nil);
+    resolve([self.class _convertConnectionSatus: status]);
 }
 
 // 断开与融云服务器的连接，并不再接收远程推送
@@ -216,12 +220,12 @@ RCT_EXPORT_METHOD(sendMessage: (RCConversationType) type targetId:(NSString*) ta
 {
     RCMessage* msg = [[self shareClient] sendMessage:type targetId:targetId content:content pushContent:pushContent
                 success:^(long messageId){
-                    [_bridge.eventDispatcher sendAppEventWithName:@"msgSendOk" body:@(messageId)];
+                    [_bridge.eventDispatcher sendAppEventWithName:@"RCMsgSendOk" body:@(messageId)];
                 } error:^(RCErrorCode code, long messageId){
                     NSMutableDictionary* dic = [NSMutableDictionary new];
                     dic[@"messageId"] = @(messageId);
                     dic[@"errCode"] = @((int)code);
-                    [_bridge.eventDispatcher sendAppEventWithName:@"msgSendFailed" body:dic];
+                    [_bridge.eventDispatcher sendAppEventWithName:@"RCMsgSendFailed" body:dic];
                 }];
     resolve([self.class _convertMessage:msg]);
 }
@@ -239,15 +243,22 @@ RCT_EXPORT_METHOD(clearMessagesUnreadStatus:(NSString *)conversationType targetI
 RCT_EXPORT_METHOD(joinChatRoom: (NSString *)targetId messageCount:(int)messageCount resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject) {
     
     [[self shareClient] joinChatRoom:targetId messageCount:messageCount success:^() {
-      
+        resolve(@"success");
       } error:^(RCErrorCode code){
-          
+          //reject(@"failed");
       }];
 }
 
 //创建讨论组
 RCT_EXPORT_METHOD(createDiscussion:(NSString *)name userIdList:(NSArray *)userIdList resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject) {
-    
+    [[self shareClient] createDiscussion:name userIdList:userIdList success:^(RCDiscussion * discussion) {
+        
+        resolve([self.class _convertDiscussion: discussion]);
+        
+        
+    } error:^(RCErrorCode status) {
+        NSLog(@"%d", status);
+    }];
 }
 
 //讨论组加人，将用户加入讨论组
@@ -337,8 +348,12 @@ RCT_EXPORT_METHOD(stopPlayVoice)
               left:(int)nLeft
             object:(id)object
 {
-    NSLog(@"onReceived : %@", [self.class _convertMessage:message]);
-    [_bridge.eventDispatcher sendAppEventWithName:@"rongIMMsgRecved" body:[self.class _convertMessage:message]];
+    [_bridge.eventDispatcher sendAppEventWithName:@"RCMsgRecved" body:[self.class _convertMessage:message]];
+}
+
+- (void)onConnectionStatusChanged:(RCConnectionStatus)status {
+    NSLog(@"onConnectionStatusChanged: %d", status);
+    [_bridge.eventDispatcher sendAppEventWithName:@"RCConnStatusChanged" body:@{ @"status": [self.class _convertConnectionSatus:status]}];
 }
 
 #pragma mark - private
@@ -424,10 +439,24 @@ RCT_EXPORT_METHOD(stopPlayVoice)
         dic[@"image"] = message.imageURL;
         dic[@"url"] = message.url;
         dic[@"extra"] = message.extra;
-    }
-    else {
+    } else if ([messageContent isKindOfClass:[RCDiscussionNotificationMessage class]]) {
+        RCDiscussionNotificationMessage *message = (RCDiscussionNotificationMessage *)messageContent;
+        dic[@"type"] = @(message.type);
+        dic[@"operatorId"] = message.operatorId;
+        dic[@"senderUserInfo"] = [self.class _convertUserInfo: message.senderUserInfo];
+    }else {
         dic[@"type"] = @"unknown";
     }
+    return dic;
+}
+
++ (NSDictionary *)_convertDiscussion: (RCDiscussion *)discussion {
+    NSMutableDictionary *dic = [NSMutableDictionary new];
+    dic[@"name"] = discussion.discussionName;
+    dic[@"discussionId"] = discussion.discussionId;
+    dic[@"creatorId"] = discussion.creatorId;
+    dic[@"memberIdList"] = discussion.memberIdList;
+    dic[@"inviteStatus"] = @(discussion.inviteStatus);
     return dic;
 }
 
@@ -484,13 +513,86 @@ RCT_EXPORT_METHOD(stopPlayVoice)
     NSMutableArray * ret = [[NSMutableArray alloc] init];
     
     for(NSString *typeName in array) {
-        NSLog(@"typeName: %@", typeName);
         RCConversationType type = [self.class _converConversationTypeString:typeName];
         [ret addObject:@(type)];
     }
-    NSLog(@"ret: %@", ret);
     return (NSArray *)ret;
 }
 
++ (NSArray *)_jsArrayToObjectArray: (NSArray *)array {
+    NSMutableArray * ret = [[NSMutableArray alloc] init];
+    for(NSString * str in array) {
+        [ret addObject: str];
+    }
+    return (NSArray *)ret;
+}
+
++ (NSDictionary *)_convertUserInfo: (RCUserInfo *)user {
+    NSMutableDictionary * ret = [[NSMutableArray alloc] init];
+    [ret setValue:[user name] forKeyPath:@"name"];
+    [ret setValue:[user userId] forKeyPath:@"userId"];
+    [ret setValue:[user portraitUri] forKeyPath:@"portraitUri"];
+    return ret;
+}
+
++ (NSString *)_convertConnectionSatus: (RCConnectionStatus)status {
+    
+    NSString * ret;
+    switch (status) {
+        case ConnectionStatus_UNKNOWN:
+            ret = @"UNKNOWN";
+            break;
+        case ConnectionStatus_Connected:
+            ret = @"Connected";
+            break;
+        case ConnectionStatus_NETWORK_UNAVAILABLE:
+            ret = @"NETWORK_UNAVAILABLE";
+            break;
+        case ConnectionStatus_AIRPLANE_MODE:
+            ret = @"AIRPLANE_MODE";
+            break;
+        case ConnectionStatus_Cellular_2G:
+            ret = @"Cellular_2G";
+            break;
+        case ConnectionStatus_Cellular_3G_4G:
+            ret = @"Cellular_3G_4G";
+            break;
+        case ConnectionStatus_WIFI:
+            ret = @"WIFI";
+            break;
+        case ConnectionStatus_KICKED_OFFLINE_BY_OTHER_CLIENT:
+            ret = @"KICKED_OFFLINE_BY_OTHER_CLIENT";
+            break;
+        case ConnectionStatus_LOGIN_ON_WEB:
+            ret = @"KICKED_OFFLINE_BY_OTHER_CLIENT";
+            break;
+        case ConnectionStatus_SERVER_INVALID:
+            ret = @"SERVER_INVALID";
+            break;
+        case ConnectionStatus_VALIDATE_INVALID:
+            ret = @"VALIDATE_INVALID";
+            break;
+        case ConnectionStatus_Connecting:
+            ret = @"Connecting";
+            break;
+        case ConnectionStatus_Unconnected:
+            ret = @"Unconnected";
+            break;
+        case ConnectionStatus_SignUp:
+            ret = @"SignUp";
+            break;
+        case ConnectionStatus_TOKEN_INCORRECT:
+            ret = @"TOKEN_INCORRECT";
+            break;
+        case ConnectionStatus_DISCONN_EXCEPTION:
+            ret = @"DISCONN_EXCEPTION";
+            break;
+        default:
+            ret = @"UNKNOWN";
+            break;
+    }
+    
+    return ret;
+}
 
 @end
